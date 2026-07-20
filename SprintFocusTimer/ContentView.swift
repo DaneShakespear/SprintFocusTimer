@@ -124,6 +124,7 @@ struct MenuBarView: View {
     @AppStorage("milestoneVolume") private var milestoneVolume: MilestoneVolume = .medium
     @AppStorage("isFocusBoardOpen") private var isFocusBoardOpen = false
     @AppStorage("focusBoardText") private var focusBoardText = "- Stay on the current task\n- Keep the next action visible\n- Avoid opening unrelated tabs\n- Write down distractions\n- Return to the timer\n- Finish one small step"
+    @AppStorage("focusBoardRichText") private var focusBoardRichText = ""
     @State private var completedTickMilestones: Set<Int> = []
     
     var body: some View {
@@ -376,16 +377,23 @@ struct MenuBarView: View {
                 .help("Close focus board")
             }
 
-            TextEditor(text: $focusBoardText)
-                .font(.system(size: 14, weight: .regular, design: .rounded))
-                .scrollContentBackground(.hidden)
-                .padding(8)
+            RichFocusBoardEditor(
+                richTextData: $focusBoardRichText,
+                plainTextFallback: $focusBoardText,
+                textColor: nsColor(for: background.foreground),
+                backgroundColor: nsColor(for: background.fill.opacity(background == .black ? 0.92 : 0.78))
+            )
                 .frame(minHeight: 176)
                 .background(background.fill.opacity(background == .black ? 0.92 : 0.78), in: RoundedRectangle(cornerRadius: 8))
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(background.foreground.opacity(0.16), lineWidth: 1)
                 }
+
+            Text(appVersionText)
+                .font(.caption2)
+                .foregroundStyle(background.secondaryForeground)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .foregroundStyle(background.foreground)
         .padding(12)
@@ -396,7 +404,25 @@ struct MenuBarView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(background.foreground.opacity(0.14), lineWidth: 1)
         }
-        .padding(.trailing, 44)
+            .padding(.trailing, 44)
+    }
+
+    func nsColor(for color: Color) -> NSColor {
+        NSColor(color)
+    }
+
+    var appVersionText: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+
+        switch (version, build) {
+        case let (version?, build?) where !version.isEmpty && !build.isEmpty:
+            return "v\(version) (\(build))"
+        case let (version?, _) where !version.isEmpty:
+            return "v\(version)"
+        default:
+            return "v1.0.0"
+        }
     }
 
     func attentionGlow() -> some View {
@@ -601,7 +627,202 @@ struct ContentView: View {
     }
 }
 
+private struct RichFocusBoardEditor: NSViewRepresentable {
+    @Binding var richTextData: String
+    @Binding var plainTextFallback: String
+
+    let textColor: NSColor
+    let backgroundColor: NSColor
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .noBorder
+
+        let textView = ShortcutRichTextView()
+        textView.delegate = context.coordinator
+        textView.isRichText = true
+        textView.allowsUndo = true
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.autoresizingMask = [.width]
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        textView.font = .systemFont(ofSize: 14)
+
+        context.coordinator.textView = textView
+        context.coordinator.applyStoredText(to: textView)
+        context.coordinator.applyTheme(to: textView, textColor: textColor, backgroundColor: backgroundColor)
+
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? ShortcutRichTextView else {
+            return
+        }
+
+        context.coordinator.parent = self
+        context.coordinator.applyTheme(to: textView, textColor: textColor, backgroundColor: backgroundColor)
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: RichFocusBoardEditor
+        weak var textView: NSTextView?
+        private var isUpdatingText = false
+
+        init(_ parent: RichFocusBoardEditor) {
+            self.parent = parent
+        }
+
+        func applyStoredText(to textView: NSTextView) {
+            isUpdatingText = true
+            textView.textStorage?.setAttributedString(parent.storedAttributedText)
+            isUpdatingText = false
+        }
+
+        func applyTheme(to textView: NSTextView, textColor: NSColor, backgroundColor: NSColor) {
+            textView.backgroundColor = backgroundColor
+            textView.insertionPointColor = textColor
+            textView.typingAttributes[.foregroundColor] = textColor
+
+            guard let textStorage = textView.textStorage else {
+                return
+            }
+
+            let selection = textView.selectedRanges
+            textStorage.addAttribute(.foregroundColor, value: textColor, range: NSRange(location: 0, length: textStorage.length))
+            textView.selectedRanges = selection
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard !isUpdatingText, let textView = notification.object as? NSTextView else {
+                return
+            }
+
+            parent.plainTextFallback = textView.string
+
+            guard let textStorage = textView.textStorage else {
+                return
+            }
+
+            let fullRange = NSRange(location: 0, length: textStorage.length)
+
+            if let data = try? textStorage.data(from: fullRange, documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]) {
+                parent.richTextData = data.base64EncodedString()
+            }
+        }
+    }
+
+    private var storedAttributedText: NSAttributedString {
+        if let data = Data(base64Encoded: richTextData),
+           let attributedText = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil) {
+            return attributedText
+        }
+
+        return NSAttributedString(
+            string: plainTextFallback,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 14),
+                .foregroundColor: textColor
+            ]
+        )
+    }
+}
+
+private final class ShortcutRichTextView: NSTextView {
+    override func keyDown(with event: NSEvent) {
+        let modifierFlags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let usesFormattingModifier = modifierFlags.contains(.command) || modifierFlags.contains(.control)
+
+        guard usesFormattingModifier, let key = event.charactersIgnoringModifiers?.lowercased() else {
+            super.keyDown(with: event)
+            return
+        }
+
+        switch key {
+        case "b":
+            toggleFontTrait(.boldFontMask)
+        case "i":
+            toggleFontTrait(.italicFontMask)
+        case "u":
+            toggleUnderline()
+        default:
+            super.keyDown(with: event)
+        }
+    }
+
+    private func toggleFontTrait(_ trait: NSFontTraitMask) {
+        guard let textStorage else {
+            return
+        }
+
+        applyToSelectedOrTypingRange { attributes, range in
+            let font = (attributes[.font] as? NSFont) ?? .systemFont(ofSize: 14)
+            let fontManager = NSFontManager.shared
+            let hasTrait = fontManager.traits(of: font).contains(trait)
+            let nextFont = hasTrait
+                ? fontManager.convert(font, toNotHaveTrait: trait)
+                : fontManager.convert(font, toHaveTrait: trait)
+
+            if range.length > 0 {
+                textStorage.addAttribute(.font, value: nextFont, range: range)
+            } else {
+                typingAttributes[.font] = nextFont
+            }
+        }
+    }
+
+    private func toggleUnderline() {
+        guard let textStorage else {
+            return
+        }
+
+        applyToSelectedOrTypingRange { attributes, range in
+            let isUnderlined = (attributes[.underlineStyle] as? Int) == NSUnderlineStyle.single.rawValue
+
+            if range.length > 0 {
+                if isUnderlined {
+                    textStorage.removeAttribute(.underlineStyle, range: range)
+                } else {
+                    textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: range)
+                }
+            } else {
+                typingAttributes[.underlineStyle] = isUnderlined ? nil : NSUnderlineStyle.single.rawValue
+            }
+        }
+    }
+
+    private func applyToSelectedOrTypingRange(_ apply: ([NSAttributedString.Key: Any], NSRange) -> Void) {
+        let range = selectedRange()
+        let attributes: [NSAttributedString.Key: Any]
+
+        if range.length > 0, let textStorage {
+            attributes = textStorage.attributes(at: range.location, effectiveRange: nil)
+        } else {
+            attributes = typingAttributes
+        }
+
+        apply(attributes, range)
+
+        if range.length > 0 {
+            didChangeText()
+        }
+    }
+}
+
 private struct WindowLevelAccessor: NSViewRepresentable {
+    private let frameAutosaveName = "SprintFocusTimerMainWindowFrame"
+
     let isAlwaysOnTop: Bool
 
     func makeNSView(context: Context) -> NSView {
@@ -619,6 +840,14 @@ private struct WindowLevelAccessor: NSViewRepresentable {
     }
 
     private func updateWindowLevel(for view: NSView) {
-        view.window?.level = isAlwaysOnTop ? .floating : .normal
+        guard let window = view.window else {
+            return
+        }
+
+        if window.frameAutosaveName != frameAutosaveName {
+            window.setFrameAutosaveName(frameAutosaveName)
+        }
+
+        window.level = isAlwaysOnTop ? .floating : .normal
     }
 }

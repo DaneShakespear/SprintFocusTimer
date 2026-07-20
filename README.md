@@ -12,7 +12,7 @@ Features:
 
 - Preset timers: 1, 5, 10, 15, 30, 60, and 90 minutes
 - Resizable circular countdown timer
-- Slide-out focus board for saved working reminders
+- Slide-out rich text focus board for saved working reminders
 - Optional milestone markers at quarter intervals
 - Optional milestone tick sounds with quick volume preview
 - Optional completion alarm
@@ -20,6 +20,7 @@ Features:
 - Light/dark background toggle
 - Optional always-on-top window
 - Settings persist between app launches
+- Window size and position persist between app launches
 
 ## Download
 

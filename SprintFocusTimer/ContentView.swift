@@ -141,16 +141,16 @@ struct MenuBarView: View {
                     ZStack {
                         Circle()
                             .stroke(background.foreground.opacity(0.16), lineWidth: timerLineWidth(for: timerSize))
-                        Circle()
-                            .trim(from: 0, to: progressValue())
-                            .stroke(phase.color, style: StrokeStyle(lineWidth: timerLineWidth(for: timerSize), lineCap: .round))
-                            .rotationEffect(.degrees(-90))
                         if isMetronomeEnabled {
                             ForEach([0, 90, 180, 270], id: \.self) { degrees in
                                 milestoneMarker(for: timerSize)
                                     .rotationEffect(.degrees(Double(degrees)))
                             }
                         }
+                        Circle()
+                            .trim(from: 0, to: progressValue())
+                            .stroke(phase.color, style: StrokeStyle(lineWidth: timerLineWidth(for: timerSize), lineCap: .round))
+                            .rotationEffect(.degrees(-90))
                         Text(formatTime(timeRemaining))
                             .font(.system(size: timerFontSize(for: timerSize), weight: .bold, design: .monospaced))
                             .foregroundStyle(background.foreground)

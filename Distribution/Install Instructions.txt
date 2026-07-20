@@ -1,0 +1,20 @@
+SprintFocusTimer install instructions
+
+This app is unsigned and unnotarized. macOS may block it the first time you open it.
+
+To install:
+1. Drag SprintFocusTimer.app into the Applications folder.
+2. Open Applications.
+3. Right-click SprintFocusTimer.app and choose Open.
+4. If macOS shows a warning, choose Open again.
+
+If macOS still blocks it:
+1. Open System Settings.
+2. Go to Privacy & Security.
+3. Look for the message about SprintFocusTimer being blocked.
+4. Click Open Anyway.
+
+The source code is available on GitHub:
+https://github.com/DaneShakespear/SprintFocusTimer
+
+Because the source is available, users can inspect how the app is made or build it themselves with Xcode.

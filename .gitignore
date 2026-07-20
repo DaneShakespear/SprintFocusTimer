@@ -1,5 +1,6 @@
 DerivedData/
 build/
+dist/
 *.xcuserstate
 xcuserdata/
 *.xcsettings

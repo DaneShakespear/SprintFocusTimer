@@ -298,29 +298,34 @@ struct MenuBarView: View {
     }
 
     func milestoneMarker(for diameter: CGFloat) -> some View {
-        let markerHeight = min(max(diameter * 0.045, 8), 18)
+        let lineWidth = timerLineWidth(for: diameter)
+        let markerWidth = min(max(diameter * 0.085, 12), 34)
 
-        return RoundedRectangle(cornerRadius: max(diameter * 0.004, 1))
+        return Capsule()
             .fill(Color.red.opacity(0.9))
-            .frame(width: min(max(diameter * 0.012, 2), 5), height: markerHeight)
-            .offset(y: -diameter / 2 + markerHeight / 2)
+            .frame(width: markerWidth, height: min(max(lineWidth * 0.28, 3), 7))
+            .offset(y: -diameter / 2 + lineWidth / 2)
     }
 
     func attentionGlow() -> some View {
-        RoundedRectangle(cornerRadius: 18)
-            .stroke(Color.red.opacity(0.38), lineWidth: 24)
-            .blur(radius: 18)
+        let primaryOpacity = background == .black ? 0.62 : 0.38
+        let secondaryOpacity = background == .black ? 0.42 : 0.24
+        let fillOpacity = background == .black ? 0.14 : 0.06
+
+        return RoundedRectangle(cornerRadius: 18)
+            .stroke(Color.red.opacity(primaryOpacity), lineWidth: background == .black ? 34 : 24)
+            .blur(radius: background == .black ? 26 : 18)
             .overlay {
                 RoundedRectangle(cornerRadius: 18)
-                    .stroke(Color.red.opacity(0.24), lineWidth: 9)
-                    .blur(radius: 8)
+                    .stroke(Color.red.opacity(secondaryOpacity), lineWidth: background == .black ? 14 : 9)
+                    .blur(radius: background == .black ? 14 : 8)
             }
             .background {
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.red.opacity(0.06))
-                    .blur(radius: 34)
+                    .fill(Color.red.opacity(fillOpacity))
+                    .blur(radius: background == .black ? 48 : 34)
             }
-            .padding(14)
+            .padding(background == .black ? 18 : 14)
             .allowsHitTesting(false)
             .animation(.easeInOut(duration: 0.22), value: visualAlertPulse)
     }
@@ -354,7 +359,7 @@ struct MenuBarView: View {
             if timeRemaining == 0 {
                 await triggerCompletionAlerts()
                 isRunning = false
-                phase = phase == .work ? .rest : .work
+                phase = .work
                 timeRemaining = phase.duration(workDuration: selectedMinutes * 60)
                 completedTickMilestones = []
             }

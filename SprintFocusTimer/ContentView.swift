@@ -317,11 +317,12 @@ struct MenuBarView: View {
 
     func milestoneMarker(for diameter: CGFloat) -> some View {
         let lineWidth = timerLineWidth(for: diameter)
-        let markerWidth = min(max(diameter * 0.085, 12), 34)
+        let markerWidth = min(max(lineWidth * 0.34, 4), 8)
+        let markerHeight = lineWidth * 0.9
 
         return Capsule()
             .fill(Color.blue.opacity(0.95))
-            .frame(width: markerWidth, height: min(max(lineWidth * 0.28, 3), 7))
+            .frame(width: markerWidth, height: markerHeight)
             .offset(y: -diameter / 2 + lineWidth / 2)
     }
 

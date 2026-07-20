@@ -13,6 +13,6 @@ struct SprintFocusTimerApp: App {
         WindowGroup {
             ContentView()
         }
-        .defaultSize(width: 244, height: 388)
+        .defaultSize(width: 270, height: 388)
     }
 }

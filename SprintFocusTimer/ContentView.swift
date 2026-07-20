@@ -117,6 +117,7 @@ struct MenuBarView: View {
     @State private var timeRemaining = 30 * 60
     @State private var isRunning = false
     @AppStorage("isMetronomeEnabled") private var isMetronomeEnabled = false
+    @AppStorage("isCompletionAlarmEnabled") private var isCompletionAlarmEnabled = true
     @AppStorage("isVisualAlertEnabled") private var isVisualAlertEnabled = false
     @State private var visualAlertPulse = false
     @AppStorage("keepInForeground") private var keepInForeground = false
@@ -194,23 +195,40 @@ struct MenuBarView: View {
                         .buttonStyle(.bordered)
 
                         if isMetronomeEnabled {
-                            HStack(alignment: .bottom, spacing: 4) {
-                                ForEach(MilestoneVolume.allCases) { level in
-                                    Button {
-                                        milestoneVolume = level
-                                        previewMilestoneAlert()
-                                    } label: {
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(level.rawValue <= milestoneVolume.rawValue ? Color.accentColor : background.foreground.opacity(0.22))
-                                            .frame(width: 8, height: CGFloat(level.rawValue * 5 + 6))
+                            HStack(spacing: 6) {
+                                HStack(alignment: .bottom, spacing: 4) {
+                                    ForEach(MilestoneVolume.allCases) { level in
+                                        Button {
+                                            milestoneVolume = level
+                                            previewMilestoneAlert()
+                                        } label: {
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(level.rawValue <= milestoneVolume.rawValue ? Color.accentColor : background.foreground.opacity(0.22))
+                                                .frame(width: 8, height: CGFloat(level.rawValue * 5 + 6))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("\(level.title) milestone volume")
                                     }
-                                    .buttonStyle(.plain)
-                                    .help("\(level.title) milestone volume")
                                 }
+                                .frame(height: 28)
+                                .padding(.horizontal, 6)
+                                .background(background.foreground.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+
+                                Button {
+                                    isCompletionAlarmEnabled.toggle()
+                                    if isCompletionAlarmEnabled {
+                                        Task {
+                                            await previewCompletionAlarm()
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: isCompletionAlarmEnabled ? "bell.fill" : "bell.slash")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .frame(width: 26, height: 26)
+                                }
+                                .buttonStyle(.bordered)
+                                .help(isCompletionAlarmEnabled ? "Timer alarm on" : "Timer alarm off")
                             }
-                            .frame(height: 28)
-                            .padding(.horizontal, 6)
-                            .background(background.foreground.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
                         }
                     }
                     .foregroundStyle(background.foreground)
@@ -269,7 +287,7 @@ struct MenuBarView: View {
             .padding(10)
         }
         .background(WindowLevelAccessor(isAlwaysOnTop: keepInForeground))
-        .frame(minWidth: 244, idealWidth: 244, maxWidth: .infinity, minHeight: 388, idealHeight: 388, maxHeight: .infinity)
+        .frame(minWidth: 270, idealWidth: 270, maxWidth: .infinity, minHeight: 388, idealHeight: 388, maxHeight: .infinity)
         .preferredColorScheme(background == .black ? .dark : .light)
         .onAppear {
             timeRemaining = phase.duration(workDuration: selectedMinutes * 60)
@@ -401,7 +419,11 @@ struct MenuBarView: View {
             return
         }
 
-        await playCompletionSound()
+        if isCompletionAlarmEnabled {
+            await playCompletionSound()
+        } else {
+            playTick()
+        }
     }
 
     func playCompletionSound() async {
@@ -424,6 +446,16 @@ struct MenuBarView: View {
         if isVisualAlertEnabled {
             triggerVisualAlert(duration: 900_000_000)
         }
+    }
+
+    func previewCompletionAlarm() async {
+        if isVisualAlertEnabled {
+            Task {
+                await triggerCompletionVisualAlert()
+            }
+        }
+
+        await playCompletionSound()
     }
 
     func playTick() {

@@ -12,6 +12,7 @@ Features:
 
 - Preset timers: 1, 5, 10, 15, 30, 60, and 90 minutes
 - Resizable circular countdown timer
+- Slide-out focus board for saved working reminders
 - Optional milestone markers at quarter intervals
 - Optional milestone tick sounds with quick volume preview
 - Optional completion alarm

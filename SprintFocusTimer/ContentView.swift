@@ -122,6 +122,8 @@ struct MenuBarView: View {
     @State private var visualAlertPulse = false
     @AppStorage("keepInForeground") private var keepInForeground = false
     @AppStorage("milestoneVolume") private var milestoneVolume: MilestoneVolume = .medium
+    @AppStorage("isFocusBoardOpen") private var isFocusBoardOpen = false
+    @AppStorage("focusBoardText") private var focusBoardText = "- Stay on the current task\n- Keep the next action visible\n- Avoid opening unrelated tabs\n- Write down distractions\n- Return to the timer\n- Finish one small step"
     @State private var completedTickMilestones: Set<Int> = []
     
     var body: some View {
@@ -130,128 +132,139 @@ struct MenuBarView: View {
                 .ignoresSafeArea()
 
             GeometryReader { proxy in
-                let timerSize = timerDiameter(for: proxy.size)
+                let boardWidth = focusBoardWidth(for: proxy.size)
+                let timerWidth = proxy.size.width - (isFocusBoardOpen ? boardWidth + 58 : 0)
+                let timerSize = timerDiameter(for: CGSize(width: timerWidth, height: proxy.size.height))
 
-                VStack(spacing: 12) {
-                    Text(phase.title)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundStyle(background.foreground)
-
-                    ZStack {
-                        Circle()
-                            .stroke(background.foreground.opacity(0.16), lineWidth: timerLineWidth(for: timerSize))
-                        if isMetronomeEnabled {
-                            ForEach([0, 90, 180, 270], id: \.self) { degrees in
-                                milestoneMarker(for: timerSize)
-                                    .rotationEffect(.degrees(Double(degrees)))
-                            }
-                        }
-                        Circle()
-                            .trim(from: 0, to: progressValue())
-                            .stroke(phase.color, style: StrokeStyle(lineWidth: timerLineWidth(for: timerSize), lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                        Text(formatTime(timeRemaining))
-                            .font(.system(size: timerFontSize(for: timerSize), weight: .bold, design: .monospaced))
+                HStack(spacing: 14) {
+                    VStack(spacing: 12) {
+                        Text(phase.title)
+                            .font(.headline)
+                            .fontWeight(.bold)
                             .foregroundStyle(background.foreground)
-                    }
-                    .frame(width: timerSize, height: timerSize)
-                    .padding(.bottom, 8)
 
-                    HStack(spacing: 8) {
-                        Text("Time")
-                            .font(.caption)
-                            .foregroundStyle(background.secondaryForeground)
+                        ZStack {
+                            Circle()
+                                .stroke(background.foreground.opacity(0.16), lineWidth: timerLineWidth(for: timerSize))
+                            if isMetronomeEnabled {
+                                ForEach([0, 90, 180, 270], id: \.self) { degrees in
+                                    milestoneMarker(for: timerSize)
+                                        .rotationEffect(.degrees(Double(degrees)))
+                                }
+                            }
+                            Circle()
+                                .trim(from: 0, to: progressValue())
+                                .stroke(phase.color, style: StrokeStyle(lineWidth: timerLineWidth(for: timerSize), lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                            Text(formatTime(timeRemaining))
+                                .font(.system(size: timerFontSize(for: timerSize), weight: .bold, design: .monospaced))
+                                .foregroundStyle(background.foreground)
+                        }
+                        .frame(width: timerSize, height: timerSize)
+                        .padding(.bottom, 8)
 
-                        Picker("Sprint length", selection: $selectedMinutes) {
-                            ForEach(presetMinutes, id: \.self) { minutes in
-                                Text("\(minutes) min").tag(minutes)
+                        HStack(spacing: 8) {
+                            Text("Time")
+                                .font(.caption)
+                                .foregroundStyle(background.secondaryForeground)
+
+                            Picker("Sprint length", selection: $selectedMinutes) {
+                                ForEach(presetMinutes, id: \.self) { minutes in
+                                    Text("\(minutes) min").tag(minutes)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(width: 98)
+                            .labelsHidden()
+                            .colorScheme(background == .black ? .dark : .light)
+                            .onChange(of: selectedMinutes) {
+                                resetTimer()
                             }
                         }
-                        .pickerStyle(.menu)
-                        .frame(width: 98)
-                        .labelsHidden()
+
+                        HStack(spacing: 8) {
+                            Button(isRunning ? "Stop" : "Start") { isRunning.toggle() }
+                                .keyboardShortcut(.space, modifiers: [])
+
+                            Button("Reset") { resetTimer() }
+                        }
+                        .buttonStyle(.bordered)
                         .colorScheme(background == .black ? .dark : .light)
-                        .onChange(of: selectedMinutes) {
-                            resetTimer()
-                        }
-                    }
 
-                    HStack(spacing: 8) {
-                        Button(isRunning ? "Stop" : "Start") { isRunning.toggle() }
-                            .keyboardShortcut(.space, modifiers: [])
+                        HStack(spacing: 8) {
+                            Button {
+                                isMetronomeEnabled.toggle()
+                            } label: {
+                                Label(isMetronomeEnabled ? "Milestones on" : "Milestones off", systemImage: "metronome")
+                            }
+                            .buttonStyle(.bordered)
 
-                        Button("Reset") { resetTimer() }
-                    }
-                    .buttonStyle(.bordered)
-                    .colorScheme(background == .black ? .dark : .light)
-
-                    HStack(spacing: 8) {
-                        Button {
-                            isMetronomeEnabled.toggle()
-                        } label: {
-                            Label(isMetronomeEnabled ? "Milestones on" : "Milestones off", systemImage: "metronome")
-                        }
-                        .buttonStyle(.bordered)
-
-                        if isMetronomeEnabled {
-                            HStack(spacing: 6) {
-                                HStack(alignment: .bottom, spacing: 4) {
-                                    ForEach(MilestoneVolume.allCases) { level in
-                                        Button {
-                                            milestoneVolume = level
-                                            previewMilestoneAlert()
-                                        } label: {
-                                            RoundedRectangle(cornerRadius: 2)
-                                                .fill(level.rawValue <= milestoneVolume.rawValue ? Color.accentColor : background.foreground.opacity(0.22))
-                                                .frame(width: 8, height: CGFloat(level.rawValue * 5 + 6))
-                                        }
-                                        .buttonStyle(.plain)
-                                        .help("\(level.title) milestone volume")
-                                    }
-                                }
-                                .frame(height: 28)
-                                .padding(.horizontal, 6)
-                                .background(background.foreground.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
-
-                                Button {
-                                    isCompletionAlarmEnabled.toggle()
-                                    if isCompletionAlarmEnabled {
-                                        Task {
-                                            await previewCompletionAlarm()
+                            if isMetronomeEnabled {
+                                HStack(spacing: 6) {
+                                    HStack(alignment: .bottom, spacing: 4) {
+                                        ForEach(MilestoneVolume.allCases) { level in
+                                            Button {
+                                                milestoneVolume = level
+                                                previewMilestoneAlert()
+                                            } label: {
+                                                RoundedRectangle(cornerRadius: 2)
+                                                    .fill(level.rawValue <= milestoneVolume.rawValue ? Color.accentColor : background.foreground.opacity(0.22))
+                                                    .frame(width: 8, height: CGFloat(level.rawValue * 5 + 6))
+                                            }
+                                            .buttonStyle(.plain)
+                                            .help("\(level.title) milestone volume")
                                         }
                                     }
-                                } label: {
-                                    Image(systemName: isCompletionAlarmEnabled ? "bell.fill" : "bell.slash")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .frame(width: 26, height: 26)
-                                }
-                                .buttonStyle(.bordered)
-                                .help(isCompletionAlarmEnabled ? "Timer alarm on" : "Timer alarm off")
-                            }
-                        }
-                    }
-                    .foregroundStyle(background.foreground)
-                    .colorScheme(background == .black ? .dark : .light)
+                                    .frame(height: 28)
+                                    .padding(.horizontal, 6)
+                                    .background(background.foreground.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
 
-                    HStack(spacing: 8) {
-                        Button {
-                            isVisualAlertEnabled.toggle()
-                            if isVisualAlertEnabled {
-                                triggerVisualAlert()
+                                    Button {
+                                        isCompletionAlarmEnabled.toggle()
+                                        if isCompletionAlarmEnabled {
+                                            Task {
+                                                await previewCompletionAlarm()
+                                            }
+                                        }
+                                    } label: {
+                                        Image(systemName: isCompletionAlarmEnabled ? "bell.fill" : "bell.slash")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .frame(width: 26, height: 26)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .help(isCompletionAlarmEnabled ? "Timer alarm on" : "Timer alarm off")
+                                }
                             }
-                        } label: {
-                            Label(isVisualAlertEnabled ? "Visuals on" : "Visuals off", systemImage: "sparkles")
                         }
-                        .buttonStyle(.bordered)
+                        .foregroundStyle(background.foreground)
+                        .colorScheme(background == .black ? .dark : .light)
+
+                        HStack(spacing: 8) {
+                            Button {
+                                isVisualAlertEnabled.toggle()
+                                if isVisualAlertEnabled {
+                                    triggerVisualAlert()
+                                }
+                            } label: {
+                                Label(isVisualAlertEnabled ? "Visuals on" : "Visuals off", systemImage: "sparkles")
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .foregroundStyle(background.foreground)
+                        .colorScheme(background == .black ? .dark : .light)
                     }
-                    .foregroundStyle(background.foreground)
-                    .colorScheme(background == .black ? .dark : .light)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 18)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+
+                    if isFocusBoardOpen {
+                        focusBoard(width: boardWidth)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 18)
-                .padding(.bottom, 28)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .animation(.spring(response: 0.32, dampingFraction: 0.88), value: isFocusBoardOpen)
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -267,6 +280,20 @@ struct MenuBarView: View {
             .background(background.foreground.opacity(0.1), in: Circle())
             .help(background == .white ? "Switch to dark background" : "Switch to light background")
             .padding(10)
+        }
+        .overlay(alignment: .trailing) {
+            Button {
+                isFocusBoardOpen.toggle()
+            } label: {
+                Image(systemName: isFocusBoardOpen ? "sidebar.right" : "sidebar.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 28, height: 44)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(background.foreground)
+            .background(background.foreground.opacity(isFocusBoardOpen ? 0.18 : 0.1), in: RoundedRectangle(cornerRadius: 8))
+            .help(isFocusBoardOpen ? "Hide focus board" : "Show focus board")
+            .padding(.trailing, 10)
         }
         .overlay {
             attentionGlow()
@@ -287,7 +314,7 @@ struct MenuBarView: View {
             .padding(10)
         }
         .background(WindowLevelAccessor(isAlwaysOnTop: keepInForeground))
-        .frame(minWidth: 270, idealWidth: 270, maxWidth: .infinity, minHeight: 388, idealHeight: 388, maxHeight: .infinity)
+        .frame(minWidth: isFocusBoardOpen ? 520 : 270, idealWidth: isFocusBoardOpen ? 520 : 270, maxWidth: .infinity, minHeight: 388, idealHeight: 388, maxHeight: .infinity)
         .preferredColorScheme(background == .black ? .dark : .light)
         .onAppear {
             timeRemaining = phase.duration(workDuration: selectedMinutes * 60)
@@ -307,6 +334,10 @@ struct MenuBarView: View {
         return min(max(availableDiameter, 136), 520)
     }
 
+    func focusBoardWidth(for size: CGSize) -> CGFloat {
+        min(max(size.width * 0.34, 210), 280)
+    }
+
     func timerLineWidth(for diameter: CGFloat) -> CGFloat {
         min(max(diameter * 0.07, 12), 28)
     }
@@ -324,6 +355,48 @@ struct MenuBarView: View {
             .fill(Color.blue.opacity(0.95))
             .frame(width: markerWidth, height: markerHeight)
             .offset(y: -diameter / 2 + lineWidth / 2)
+    }
+
+    func focusBoard(width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Focus board", systemImage: "list.bullet.rectangle")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    isFocusBoardOpen = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .help("Close focus board")
+            }
+
+            TextEditor(text: $focusBoardText)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .frame(minHeight: 176)
+                .background(background.fill.opacity(background == .black ? 0.92 : 0.78), in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(background.foreground.opacity(0.16), lineWidth: 1)
+                }
+        }
+        .foregroundStyle(background.foreground)
+        .padding(12)
+        .frame(width: width, alignment: .topLeading)
+        .frame(minHeight: 244, alignment: .topLeading)
+        .background(background.foreground.opacity(background == .black ? 0.09 : 0.07), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(background.foreground.opacity(0.14), lineWidth: 1)
+        }
+        .padding(.trailing, 44)
     }
 
     func attentionGlow() -> some View {

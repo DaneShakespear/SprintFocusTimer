@@ -109,7 +109,7 @@ struct MenuBarView: View {
         }
     }
 
-    private let presetMinutes = [5, 10, 15, 30, 60, 90]
+    private let presetMinutes = [1, 5, 10, 15, 30, 60, 90]
 
     @State private var phase: Phase = .work
     @State private var selectedMinutes = 30
@@ -117,6 +117,8 @@ struct MenuBarView: View {
     @State private var timeRemaining = 30 * 60
     @State private var isRunning = false
     @State private var isMetronomeEnabled = false
+    @State private var isVisualAlertEnabled = false
+    @State private var visualAlertPulse = false
     @State private var keepInForeground = false
     @State private var milestoneVolume: MilestoneVolume = .medium
     @State private var completedTickMilestones: Set<Int> = []
@@ -183,36 +185,50 @@ struct MenuBarView: View {
                     .buttonStyle(.bordered)
                     .colorScheme(background == .black ? .dark : .light)
 
-                HStack(spacing: 8) {
-                    Button {
-                        isMetronomeEnabled.toggle()
-                    } label: {
-                        Label(isMetronomeEnabled ? "Milestones on" : "Milestones off", systemImage: "metronome")
-                    }
-                    .buttonStyle(.bordered)
-
-                    if isMetronomeEnabled {
-                        HStack(alignment: .bottom, spacing: 4) {
-                            ForEach(MilestoneVolume.allCases) { level in
-                                Button {
-                                    milestoneVolume = level
-                                    playTick()
-                                } label: {
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(level.rawValue <= milestoneVolume.rawValue ? Color.accentColor : background.foreground.opacity(0.22))
-                                        .frame(width: 8, height: CGFloat(level.rawValue * 5 + 6))
-                                }
-                                .buttonStyle(.plain)
-                                .help("\(level.title) milestone volume")
-                            }
+                    HStack(spacing: 8) {
+                        Button {
+                            isMetronomeEnabled.toggle()
+                        } label: {
+                            Label(isMetronomeEnabled ? "Milestones on" : "Milestones off", systemImage: "metronome")
                         }
-                        .frame(height: 28)
-                        .padding(.horizontal, 6)
-                        .background(background.foreground.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+                        .buttonStyle(.bordered)
+
+                        if isMetronomeEnabled {
+                            HStack(alignment: .bottom, spacing: 4) {
+                                ForEach(MilestoneVolume.allCases) { level in
+                                    Button {
+                                        milestoneVolume = level
+                                        playTick()
+                                    } label: {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(level.rawValue <= milestoneVolume.rawValue ? Color.accentColor : background.foreground.opacity(0.22))
+                                            .frame(width: 8, height: CGFloat(level.rawValue * 5 + 6))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("\(level.title) milestone volume")
+                                }
+                            }
+                            .frame(height: 28)
+                            .padding(.horizontal, 6)
+                            .background(background.foreground.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+                        }
                     }
-                }
-                .foregroundStyle(background.foreground)
-                .colorScheme(background == .black ? .dark : .light)
+                    .foregroundStyle(background.foreground)
+                    .colorScheme(background == .black ? .dark : .light)
+
+                    HStack(spacing: 8) {
+                        Button {
+                            isVisualAlertEnabled.toggle()
+                            if isVisualAlertEnabled {
+                                triggerVisualAlert()
+                            }
+                        } label: {
+                            Label(isVisualAlertEnabled ? "Visuals on" : "Visuals off", systemImage: "sparkles")
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .foregroundStyle(background.foreground)
+                    .colorScheme(background == .black ? .dark : .light)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 18)
@@ -234,6 +250,10 @@ struct MenuBarView: View {
             .help(background == .white ? "Switch to dark background" : "Switch to light background")
             .padding(10)
         }
+        .overlay {
+            attentionGlow()
+                .opacity(visualAlertPulse ? 1 : 0)
+        }
         .overlay(alignment: .topLeading) {
             Button {
                 keepInForeground.toggle()
@@ -249,7 +269,7 @@ struct MenuBarView: View {
             .padding(10)
         }
         .background(WindowLevelAccessor(isAlwaysOnTop: keepInForeground))
-        .frame(minWidth: 244, idealWidth: 244, maxWidth: .infinity, minHeight: 360, idealHeight: 360, maxHeight: .infinity)
+        .frame(minWidth: 244, idealWidth: 244, maxWidth: .infinity, minHeight: 388, idealHeight: 388, maxHeight: .infinity)
         .preferredColorScheme(background == .black ? .dark : .light)
         .task(id: isRunning) {
             await runTimer()
@@ -262,7 +282,7 @@ struct MenuBarView: View {
     }
 
     func timerDiameter(for size: CGSize) -> CGFloat {
-        let availableDiameter = min(size.width - 48, size.height - 226)
+        let availableDiameter = min(size.width - 48, size.height - 258)
         return min(max(availableDiameter, 136), 520)
     }
 
@@ -281,6 +301,16 @@ struct MenuBarView: View {
             .fill(Color.red.opacity(0.9))
             .frame(width: min(max(diameter * 0.012, 2), 5), height: markerHeight)
             .offset(y: -diameter / 2 + markerHeight / 2)
+    }
+
+    func attentionGlow() -> some View {
+        RoundedRectangle(cornerRadius: 18)
+            .stroke(Color.red.opacity(0.95), lineWidth: 4)
+            .shadow(color: .red.opacity(0.8), radius: 18)
+            .shadow(color: .red.opacity(0.45), radius: 36)
+            .padding(7)
+            .allowsHitTesting(false)
+            .animation(.easeOut(duration: 0.18), value: visualAlertPulse)
     }
     
     func formatTime(_ seconds: Int) -> String {
@@ -306,11 +336,11 @@ struct MenuBarView: View {
 
             if timeRemaining > 0 {
                 timeRemaining -= 1
-                playElapsedMilestoneTickIfNeeded()
+                triggerElapsedMilestoneAlertsIfNeeded()
             }
 
             if timeRemaining == 0 {
-                await playCompletionTickIfNeeded()
+                await triggerCompletionAlerts()
                 isRunning = false
                 phase = phase == .work ? .rest : .work
                 timeRemaining = phase.duration(workDuration: selectedMinutes * 60)
@@ -319,11 +349,7 @@ struct MenuBarView: View {
         }
     }
 
-    func playElapsedMilestoneTickIfNeeded() {
-        guard isMetronomeEnabled else {
-            return
-        }
-
+    func triggerElapsedMilestoneAlertsIfNeeded() {
         let duration = phase.duration(workDuration: selectedMinutes * 60)
         let elapsed = duration - timeRemaining
 
@@ -332,12 +358,26 @@ struct MenuBarView: View {
 
             if elapsed >= threshold && !completedTickMilestones.contains(milestone) {
                 completedTickMilestones.insert(milestone)
-                playTick()
+                triggerMilestoneAlert()
             }
         }
     }
 
-    func playCompletionTickIfNeeded() async {
+    func triggerMilestoneAlert() {
+        if isMetronomeEnabled {
+            playTick()
+        }
+
+        if isVisualAlertEnabled {
+            triggerVisualAlert()
+        }
+    }
+
+    func triggerCompletionAlerts() async {
+        if isVisualAlertEnabled {
+            triggerVisualAlert()
+        }
+
         guard isMetronomeEnabled else {
             return
         }
@@ -362,6 +402,17 @@ struct MenuBarView: View {
 
         sound.volume = milestoneVolume.volume
         sound.play()
+    }
+
+    func triggerVisualAlert() {
+        visualAlertPulse = true
+
+        Task {
+            try? await Task.sleep(nanoseconds: 650_000_000)
+            await MainActor.run {
+                visualAlertPulse = false
+            }
+        }
     }
 }
 

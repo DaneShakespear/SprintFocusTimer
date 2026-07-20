@@ -308,21 +308,21 @@ struct MenuBarView: View {
 
     func attentionGlow() -> some View {
         RoundedRectangle(cornerRadius: 18)
-            .stroke(Color.red.opacity(0.95), lineWidth: 10)
-            .blur(radius: 12)
+            .stroke(Color.red.opacity(0.38), lineWidth: 24)
+            .blur(radius: 18)
             .overlay {
                 RoundedRectangle(cornerRadius: 18)
-                    .stroke(Color.red.opacity(0.55), lineWidth: 3)
-                    .blur(radius: 2)
+                    .stroke(Color.red.opacity(0.24), lineWidth: 9)
+                    .blur(radius: 8)
             }
             .background {
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.red.opacity(0.08))
-                    .blur(radius: 22)
+                    .fill(Color.red.opacity(0.06))
+                    .blur(radius: 34)
             }
-            .padding(9)
+            .padding(14)
             .allowsHitTesting(false)
-            .animation(.easeInOut(duration: 0.28), value: visualAlertPulse)
+            .animation(.easeInOut(duration: 0.22), value: visualAlertPulse)
     }
     
     func formatTime(_ seconds: Int) -> String {
@@ -387,7 +387,7 @@ struct MenuBarView: View {
 
     func triggerCompletionAlerts() async {
         if isVisualAlertEnabled {
-            triggerVisualAlert(duration: 2_200_000_000)
+            await triggerCompletionVisualAlert()
         }
 
         guard isMetronomeEnabled else {
@@ -398,18 +398,15 @@ struct MenuBarView: View {
     }
 
     func playCompletionSound() async {
-        playSound(named: "Basso", volume: min(milestoneVolume.volume + 0.35, 1))
-        try? await Task.sleep(nanoseconds: 220_000_000)
-
-        for tickIndex in 0..<3 {
+        for soundIndex in 0..<3 {
             guard !Task.isCancelled else {
                 return
             }
 
-            playSound(named: "Tink", volume: min(milestoneVolume.volume + 0.25, 1))
+            playSound(named: "Basso", volume: min(milestoneVolume.volume + 0.35, 1))
 
-            if tickIndex < 2 {
-                try? await Task.sleep(nanoseconds: 160_000_000)
+            if soundIndex < 2 {
+                try? await Task.sleep(nanoseconds: 360_000_000)
             }
         }
     }
@@ -434,6 +431,22 @@ struct MenuBarView: View {
             try? await Task.sleep(nanoseconds: duration)
             await MainActor.run {
                 visualAlertPulse = false
+            }
+        }
+    }
+
+    func triggerCompletionVisualAlert() async {
+        for pulseIndex in 0..<3 {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            visualAlertPulse = true
+            try? await Task.sleep(nanoseconds: 520_000_000)
+            visualAlertPulse = false
+
+            if pulseIndex < 2 {
+                try? await Task.sleep(nanoseconds: 180_000_000)
             }
         }
     }

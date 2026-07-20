@@ -112,15 +112,15 @@ struct MenuBarView: View {
     private let presetMinutes = [1, 5, 10, 15, 30, 60, 90]
 
     @State private var phase: Phase = .work
-    @State private var selectedMinutes = 30
-    @State private var background: TimerBackground = .white
+    @AppStorage("selectedMinutes") private var selectedMinutes = 30
+    @AppStorage("timerBackground") private var background: TimerBackground = .white
     @State private var timeRemaining = 30 * 60
     @State private var isRunning = false
-    @State private var isMetronomeEnabled = false
-    @State private var isVisualAlertEnabled = false
+    @AppStorage("isMetronomeEnabled") private var isMetronomeEnabled = false
+    @AppStorage("isVisualAlertEnabled") private var isVisualAlertEnabled = false
     @State private var visualAlertPulse = false
-    @State private var keepInForeground = false
-    @State private var milestoneVolume: MilestoneVolume = .medium
+    @AppStorage("keepInForeground") private var keepInForeground = false
+    @AppStorage("milestoneVolume") private var milestoneVolume: MilestoneVolume = .medium
     @State private var completedTickMilestones: Set<Int> = []
     
     var body: some View {
@@ -271,6 +271,9 @@ struct MenuBarView: View {
         .background(WindowLevelAccessor(isAlwaysOnTop: keepInForeground))
         .frame(minWidth: 244, idealWidth: 244, maxWidth: .infinity, minHeight: 388, idealHeight: 388, maxHeight: .infinity)
         .preferredColorScheme(background == .black ? .dark : .light)
+        .onAppear {
+            timeRemaining = phase.duration(workDuration: selectedMinutes * 60)
+        }
         .task(id: isRunning) {
             await runTimer()
         }
@@ -305,12 +308,21 @@ struct MenuBarView: View {
 
     func attentionGlow() -> some View {
         RoundedRectangle(cornerRadius: 18)
-            .stroke(Color.red.opacity(0.95), lineWidth: 4)
-            .shadow(color: .red.opacity(0.8), radius: 18)
-            .shadow(color: .red.opacity(0.45), radius: 36)
-            .padding(7)
+            .stroke(Color.red.opacity(0.95), lineWidth: 10)
+            .blur(radius: 12)
+            .overlay {
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(Color.red.opacity(0.55), lineWidth: 3)
+                    .blur(radius: 2)
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.red.opacity(0.08))
+                    .blur(radius: 22)
+            }
+            .padding(9)
             .allowsHitTesting(false)
-            .animation(.easeOut(duration: 0.18), value: visualAlertPulse)
+            .animation(.easeInOut(duration: 0.28), value: visualAlertPulse)
     }
     
     func formatTime(_ seconds: Int) -> String {
@@ -375,19 +387,26 @@ struct MenuBarView: View {
 
     func triggerCompletionAlerts() async {
         if isVisualAlertEnabled {
-            triggerVisualAlert()
+            triggerVisualAlert(duration: 2_200_000_000)
         }
 
         guard isMetronomeEnabled else {
             return
         }
 
+        await playCompletionSound()
+    }
+
+    func playCompletionSound() async {
+        playSound(named: "Basso", volume: min(milestoneVolume.volume + 0.35, 1))
+        try? await Task.sleep(nanoseconds: 220_000_000)
+
         for tickIndex in 0..<3 {
             guard !Task.isCancelled else {
                 return
             }
 
-            playTick()
+            playSound(named: "Tink", volume: min(milestoneVolume.volume + 0.25, 1))
 
             if tickIndex < 2 {
                 try? await Task.sleep(nanoseconds: 160_000_000)
@@ -396,19 +415,23 @@ struct MenuBarView: View {
     }
 
     func playTick() {
-        guard let sound = NSSound(named: "Tink") else {
-            return
-        }
-
-        sound.volume = milestoneVolume.volume
-        sound.play()
+        playSound(named: "Tink", volume: milestoneVolume.volume)
     }
 
-    func triggerVisualAlert() {
+    func playSound(named name: String, volume: Float) {
+        if let sound = NSSound(named: name) {
+            sound.volume = volume
+            sound.play()
+        } else {
+            NSSound.beep()
+        }
+    }
+
+    func triggerVisualAlert(duration: UInt64 = 1_600_000_000) {
         visualAlertPulse = true
 
         Task {
-            try? await Task.sleep(nanoseconds: 650_000_000)
+            try? await Task.sleep(nanoseconds: duration)
             await MainActor.run {
                 visualAlertPulse = false
             }

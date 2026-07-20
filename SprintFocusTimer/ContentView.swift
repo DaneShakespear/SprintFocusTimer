@@ -198,7 +198,7 @@ struct MenuBarView: View {
                                 ForEach(MilestoneVolume.allCases) { level in
                                     Button {
                                         milestoneVolume = level
-                                        playTick()
+                                        previewMilestoneAlert()
                                     } label: {
                                         RoundedRectangle(cornerRadius: 2)
                                             .fill(level.rawValue <= milestoneVolume.rawValue ? Color.accentColor : background.foreground.opacity(0.22))
@@ -387,7 +387,9 @@ struct MenuBarView: View {
 
     func triggerCompletionAlerts() async {
         if isVisualAlertEnabled {
-            await triggerCompletionVisualAlert()
+            Task {
+                await triggerCompletionVisualAlert()
+            }
         }
 
         guard isMetronomeEnabled else {
@@ -403,11 +405,19 @@ struct MenuBarView: View {
                 return
             }
 
-            playSound(named: "Basso", volume: min(milestoneVolume.volume + 0.35, 1))
+            playAlarmSound()
 
             if soundIndex < 2 {
-                try? await Task.sleep(nanoseconds: 360_000_000)
+                try? await Task.sleep(nanoseconds: 520_000_000)
             }
+        }
+    }
+
+    func previewMilestoneAlert() {
+        playTick()
+
+        if isVisualAlertEnabled {
+            triggerVisualAlert(duration: 900_000_000)
         }
     }
 
@@ -415,13 +425,27 @@ struct MenuBarView: View {
         playSound(named: "Tink", volume: milestoneVolume.volume)
     }
 
-    func playSound(named name: String, volume: Float) {
+    func playAlarmSound() {
+        if playSound(named: "Sosumi", volume: 1) {
+            return
+        }
+
+        if playSound(named: "Funk", volume: 1) {
+            return
+        }
+
+        NSSound.beep()
+    }
+
+    @discardableResult
+    func playSound(named name: String, volume: Float) -> Bool {
         if let sound = NSSound(named: name) {
             sound.volume = volume
             sound.play()
-        } else {
-            NSSound.beep()
+            return true
         }
+
+        return false
     }
 
     func triggerVisualAlert(duration: UInt64 = 1_600_000_000) {

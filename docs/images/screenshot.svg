@@ -1,0 +1,47 @@
+<svg width="1200" height="820" viewBox="0 0 1200 820" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="820" rx="42" fill="#111111"/>
+  <rect x="214" y="58" width="772" height="704" rx="24" fill="#050505" stroke="#2A2A2A" stroke-width="2"/>
+  <circle cx="250" cy="94" r="8" fill="#FF5F57"/>
+  <circle cx="278" cy="94" r="8" fill="#FFBD2E"/>
+  <circle cx="306" cy="94" r="8" fill="#28C840"/>
+  <circle cx="246" cy="140" r="18" fill="#242424"/>
+  <path d="M246 130v20M238 137l8-7 8 7" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="954" cy="140" r="18" fill="#242424"/>
+  <path d="M961 145a12 12 0 1 1-10-17 15 15 0 0 0 10 17Z" fill="#F5F5F5"/>
+
+  <text x="600" y="142" text-anchor="middle" fill="#F8F8F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="28" font-weight="700">Work</text>
+
+  <circle cx="600" cy="350" r="142" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="28"/>
+  <line x1="600" y1="208" x2="600" y2="236" stroke="#2F80FF" stroke-width="8" stroke-linecap="round"/>
+  <line x1="742" y1="350" x2="714" y2="350" stroke="#2F80FF" stroke-width="8" stroke-linecap="round"/>
+  <line x1="600" y1="492" x2="600" y2="464" stroke="#2F80FF" stroke-width="8" stroke-linecap="round"/>
+  <line x1="458" y1="350" x2="486" y2="350" stroke="#2F80FF" stroke-width="8" stroke-linecap="round"/>
+  <path d="M600 208a142 142 0 1 1-100.41 41.59" stroke="#FF3B30" stroke-width="28" stroke-linecap="round"/>
+  <text x="600" y="369" text-anchor="middle" fill="#F8F8F8" font-family="SFMono-Regular, Menlo, monospace" font-size="58" font-weight="700">24:18</text>
+
+  <text x="520" y="559" fill="#FFFFFF" fill-opacity="0.66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18">Time</text>
+  <rect x="572" y="532" width="116" height="42" rx="9" fill="#252525" stroke="#3A3A3A"/>
+  <text x="630" y="559" text-anchor="middle" fill="#F8F8F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18">30 min</text>
+  <path d="M670 548l6 7 6-7" stroke="#F8F8F8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="516" y="600" width="78" height="42" rx="9" fill="#2B2B2B" stroke="#444444"/>
+  <text x="555" y="627" text-anchor="middle" fill="#F8F8F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17">Start</text>
+  <rect x="606" y="600" width="78" height="42" rx="9" fill="#2B2B2B" stroke="#444444"/>
+  <text x="645" y="627" text-anchor="middle" fill="#F8F8F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17">Reset</text>
+
+  <rect x="413" y="664" width="150" height="42" rx="9" fill="#2B2B2B" stroke="#444444"/>
+  <path d="M438 695v-22M438 673l14 8v6l-14 8M426 682h12" stroke="#F8F8F8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="503" y="691" text-anchor="middle" fill="#F8F8F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16">Milestones on</text>
+  <rect x="576" y="668" width="64" height="34" rx="8" fill="#202020"/>
+  <rect x="590" y="687" width="8" height="9" rx="2" fill="#0A84FF"/>
+  <rect x="604" y="682" width="8" height="14" rx="2" fill="#0A84FF"/>
+  <rect x="618" y="677" width="8" height="19" rx="2" fill="#0A84FF"/>
+  <rect x="632" y="672" width="8" height="24" rx="2" fill="#FFFFFF" fill-opacity="0.22"/>
+  <rect x="656" y="664" width="48" height="42" rx="9" fill="#2B2B2B" stroke="#444444"/>
+  <path d="M671 686c0-8 4-13 10-13s10 5 10 13v5h-20v-5Z" stroke="#F8F8F8" stroke-width="2.2"/>
+  <path d="M676 673a5 5 0 0 1 10 0" stroke="#F8F8F8" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M672 695h18" stroke="#F8F8F8" stroke-width="2.2" stroke-linecap="round"/>
+  <rect x="716" y="664" width="122" height="42" rx="9" fill="#2B2B2B" stroke="#444444"/>
+  <path d="M743 675l3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8Z" stroke="#F8F8F8" stroke-width="2" stroke-linejoin="round"/>
+  <text x="790" y="691" text-anchor="middle" fill="#F8F8F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16">Visuals on</text>
+</svg>

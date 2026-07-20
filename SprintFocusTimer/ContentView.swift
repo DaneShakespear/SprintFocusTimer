@@ -113,7 +113,7 @@ struct MenuBarView: View {
 
     @State private var phase: Phase = .work
     @AppStorage("selectedMinutes") private var selectedMinutes = 30
-    @AppStorage("timerBackground") private var background: TimerBackground = .white
+    @AppStorage("timerBackground") private var background: TimerBackground = .black
     @State private var timeRemaining = 30 * 60
     @State private var isRunning = false
     @AppStorage("isMetronomeEnabled") private var isMetronomeEnabled = false
@@ -320,7 +320,7 @@ struct MenuBarView: View {
         let markerWidth = min(max(diameter * 0.085, 12), 34)
 
         return Capsule()
-            .fill(Color.red.opacity(0.9))
+            .fill(Color.blue.opacity(0.95))
             .frame(width: markerWidth, height: min(max(lineWidth * 0.28, 3), 7))
             .offset(y: -diameter / 2 + lineWidth / 2)
     }
@@ -432,10 +432,10 @@ struct MenuBarView: View {
                 return
             }
 
-            playAlarmSound()
+            await playAlarmSound()
 
             if soundIndex < 2 {
-                try? await Task.sleep(nanoseconds: 520_000_000)
+                try? await Task.sleep(nanoseconds: 420_000_000)
             }
         }
     }
@@ -462,16 +462,24 @@ struct MenuBarView: View {
         playSound(named: "Tink", volume: milestoneVolume.volume)
     }
 
-    func playAlarmSound() {
-        if playSound(named: "Sosumi", volume: 1) {
-            return
-        }
+    func playAlarmSound() async {
+        let firstSoundPlayed = playSound(named: "Sosumi", volume: 1)
+            || playSound(named: "Funk", volume: 1)
+            || playSound(named: "Basso", volume: 1)
 
-        if playSound(named: "Funk", volume: 1) {
-            return
-        }
+        try? await Task.sleep(nanoseconds: 95_000_000)
 
-        NSSound.beep()
+        let secondSoundPlayed = playSound(named: "Glass", volume: 1)
+            || playSound(named: "Ping", volume: 1)
+
+        try? await Task.sleep(nanoseconds: 95_000_000)
+
+        let thirdSoundPlayed = playSound(named: "Submarine", volume: 1)
+            || playSound(named: "Hero", volume: 1)
+
+        if !firstSoundPlayed && !secondSoundPlayed && !thirdSoundPlayed {
+            NSSound.beep()
+        }
     }
 
     @discardableResult

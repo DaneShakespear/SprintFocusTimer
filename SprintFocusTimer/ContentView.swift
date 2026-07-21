@@ -866,12 +866,12 @@ private final class ShortcutRichTextView: NSTextView {
 
 private struct WindowLevelAccessor: NSViewRepresentable {
     private let frameAutosaveName = "SprintFocusTimerMainWindowFrame"
-    private let frameDescriptorKey = "SprintFocusTimer.windowFrameDescriptor"
+    private let frameKey = "SprintFocusTimer.windowFrame"
 
     let isAlwaysOnTop: Bool
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(frameDescriptorKey: frameDescriptorKey)
+        Coordinator(frameKey: frameKey)
     }
 
     func makeNSView(context: Context) -> NSView {
@@ -904,13 +904,13 @@ private struct WindowLevelAccessor: NSViewRepresentable {
     }
 
     final class Coordinator {
-        private let frameDescriptorKey: String
+        private let frameKey: String
         private weak var observedWindow: NSWindow?
         private var didRestoreFrame = false
         private var notificationTokens: [NSObjectProtocol] = []
 
-        init(frameDescriptorKey: String) {
-            self.frameDescriptorKey = frameDescriptorKey
+        init(frameKey: String) {
+            self.frameKey = frameKey
         }
 
         deinit {
@@ -924,8 +924,12 @@ private struct WindowLevelAccessor: NSViewRepresentable {
 
             didRestoreFrame = true
 
-            if let descriptor = UserDefaults.standard.string(forKey: frameDescriptorKey), !descriptor.isEmpty {
-                window.setFrame(from: descriptor)
+            if let storedFrame = UserDefaults.standard.string(forKey: frameKey) {
+                let frame = NSRectFromString(storedFrame)
+
+                if frame.width > 0, frame.height > 0 {
+                    restore(frame: frame, for: window)
+                }
             }
         }
 
@@ -961,8 +965,38 @@ private struct WindowLevelAccessor: NSViewRepresentable {
         }
 
         private func saveFrame(for window: NSWindow) {
-            UserDefaults.standard.set(window.frameDescriptor, forKey: frameDescriptorKey)
+            UserDefaults.standard.set(NSStringFromRect(window.frame), forKey: frameKey)
             window.saveFrame(usingName: "SprintFocusTimerMainWindowFrame")
         }
+
+        private func restore(frame: NSRect, for window: NSWindow) {
+            if screenContaining(frame: frame) != nil {
+                window.setFrame(frame, display: true)
+                return
+            }
+
+            let fallbackScreen = NSScreen.main ?? NSScreen.screens.first
+            let constrainedFrame = window.constrainFrameRect(frame, to: fallbackScreen)
+            window.setFrame(constrainedFrame, display: true)
+        }
+
+        private func screenContaining(frame: NSRect) -> NSScreen? {
+            NSScreen.screens.max { first, second in
+                first.visibleFrame.intersection(frame).area < second.visibleFrame.intersection(frame).area
+            }
+            .flatMap { screen in
+                screen.visibleFrame.intersects(frame) ? screen : nil
+            }
+        }
+    }
+}
+
+private extension NSRect {
+    var area: CGFloat {
+        guard !isNull, !isEmpty else {
+            return 0
+        }
+
+        return width * height
     }
 }

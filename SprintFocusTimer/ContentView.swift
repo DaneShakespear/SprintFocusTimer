@@ -125,6 +125,8 @@ struct MenuBarView: View {
     @AppStorage("isFocusBoardOpen") private var isFocusBoardOpen = false
     @AppStorage("focusBoardText") private var focusBoardText = "- Stay on the current task\n- Keep the next action visible\n- Avoid opening unrelated tabs\n- Write down distractions\n- Return to the timer\n- Finish one small step"
     @AppStorage("focusBoardRichText") private var focusBoardRichText = ""
+    @AppStorage("focusBoardWidth") private var focusBoardWidthValue = 240.0
+    @State private var focusBoardDragStartWidth = 0.0
     @State private var completedTickMilestones: Set<Int> = []
     
     var body: some View {
@@ -260,6 +262,9 @@ struct MenuBarView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 
                     if isFocusBoardOpen {
+                        focusBoardDivider(maxWidth: maxFocusBoardWidth(for: proxy.size))
+                            .transition(.opacity)
+
                         focusBoard(width: boardWidth)
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
@@ -315,7 +320,7 @@ struct MenuBarView: View {
             .padding(10)
         }
         .background(WindowLevelAccessor(isAlwaysOnTop: keepInForeground))
-        .frame(minWidth: isFocusBoardOpen ? 520 : 270, idealWidth: isFocusBoardOpen ? 520 : 270, maxWidth: .infinity, minHeight: 388, idealHeight: 388, maxHeight: .infinity)
+        .frame(minWidth: minimumWindowWidth, idealWidth: minimumWindowWidth, maxWidth: .infinity, minHeight: 388, idealHeight: 388, maxHeight: .infinity)
         .preferredColorScheme(background == .black ? .dark : .light)
         .onAppear {
             timeRemaining = phase.duration(workDuration: selectedMinutes * 60)
@@ -336,7 +341,19 @@ struct MenuBarView: View {
     }
 
     func focusBoardWidth(for size: CGSize) -> CGFloat {
-        min(max(size.width * 0.34, 210), 280)
+        min(max(focusBoardWidthValue, minFocusBoardWidth), maxFocusBoardWidth(for: size))
+    }
+
+    var minFocusBoardWidth: Double {
+        210
+    }
+
+    func maxFocusBoardWidth(for size: CGSize) -> Double {
+        min(max(Double(size.width) - 328, minFocusBoardWidth), 360)
+    }
+
+    var minimumWindowWidth: CGFloat {
+        isFocusBoardOpen ? CGFloat(328 + focusBoardWidthValue) : 270
     }
 
     func timerLineWidth(for diameter: CGFloat) -> CGFloat {
@@ -404,7 +421,34 @@ struct MenuBarView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(background.foreground.opacity(0.14), lineWidth: 1)
         }
-            .padding(.trailing, 44)
+        .padding(.trailing, 44)
+    }
+
+    func focusBoardDivider(maxWidth: Double) -> some View {
+        Rectangle()
+            .fill(background.foreground.opacity(0.16))
+            .frame(width: 2)
+            .overlay {
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(width: 14)
+                    .contentShape(Rectangle())
+            }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if focusBoardDragStartWidth == 0 {
+                            focusBoardDragStartWidth = focusBoardWidthValue
+                        }
+
+                        let nextWidth = focusBoardDragStartWidth - value.translation.width
+                        focusBoardWidthValue = min(max(nextWidth, minFocusBoardWidth), maxWidth)
+                    }
+                    .onEnded { _ in
+                        focusBoardDragStartWidth = 0
+                    }
+            )
+            .help("Drag to resize focus board")
     }
 
     func nsColor(for color: Color) -> NSColor {
@@ -822,24 +866,29 @@ private final class ShortcutRichTextView: NSTextView {
 
 private struct WindowLevelAccessor: NSViewRepresentable {
     private let frameAutosaveName = "SprintFocusTimerMainWindowFrame"
+    private let frameDescriptorKey = "SprintFocusTimer.windowFrameDescriptor"
 
     let isAlwaysOnTop: Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(frameDescriptorKey: frameDescriptorKey)
+    }
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
-            updateWindowLevel(for: view)
+            updateWindow(for: view, coordinator: context.coordinator)
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
-            updateWindowLevel(for: nsView)
+            updateWindow(for: nsView, coordinator: context.coordinator)
         }
     }
 
-    private func updateWindowLevel(for view: NSView) {
+    private func updateWindow(for view: NSView, coordinator: Coordinator) {
         guard let window = view.window else {
             return
         }
@@ -848,6 +897,72 @@ private struct WindowLevelAccessor: NSViewRepresentable {
             window.setFrameAutosaveName(frameAutosaveName)
         }
 
+        coordinator.restoreFrameIfNeeded(for: window)
+        coordinator.observe(window: window)
+
         window.level = isAlwaysOnTop ? .floating : .normal
+    }
+
+    final class Coordinator {
+        private let frameDescriptorKey: String
+        private weak var observedWindow: NSWindow?
+        private var didRestoreFrame = false
+        private var notificationTokens: [NSObjectProtocol] = []
+
+        init(frameDescriptorKey: String) {
+            self.frameDescriptorKey = frameDescriptorKey
+        }
+
+        deinit {
+            notificationTokens.forEach(NotificationCenter.default.removeObserver)
+        }
+
+        func restoreFrameIfNeeded(for window: NSWindow) {
+            guard !didRestoreFrame else {
+                return
+            }
+
+            didRestoreFrame = true
+
+            if let descriptor = UserDefaults.standard.string(forKey: frameDescriptorKey), !descriptor.isEmpty {
+                window.setFrame(from: descriptor)
+            }
+        }
+
+        func observe(window: NSWindow) {
+            guard observedWindow !== window else {
+                return
+            }
+
+            notificationTokens.forEach(NotificationCenter.default.removeObserver)
+            notificationTokens = []
+            observedWindow = window
+
+            let notifications: [NSNotification.Name] = [
+                NSWindow.didMoveNotification,
+                NSWindow.didEndLiveResizeNotification,
+                NSWindow.didResizeNotification,
+                NSWindow.willCloseNotification
+            ]
+
+            notificationTokens = notifications.map { notification in
+                NotificationCenter.default.addObserver(
+                    forName: notification,
+                    object: window,
+                    queue: .main
+                ) { [weak self, weak window] _ in
+                    guard let window else {
+                        return
+                    }
+
+                    self?.saveFrame(for: window)
+                }
+            }
+        }
+
+        private func saveFrame(for window: NSWindow) {
+            UserDefaults.standard.set(window.frameDescriptor, forKey: frameDescriptorKey)
+            window.saveFrame(usingName: "SprintFocusTimerMainWindowFrame")
+        }
     }
 }

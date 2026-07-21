@@ -411,6 +411,7 @@ struct MenuBarView: View {
                 Link("Identity Architect", destination: identityArchitectURL)
                     .font(.caption2)
                     .foregroundStyle(Color.accentColor)
+                    .cursor(.pointingHand)
 
                 Spacer()
 
@@ -455,6 +456,7 @@ struct MenuBarView: View {
                         focusBoardDragStartWidth = 0
                     }
             )
+            .cursor(.resizeLeftRight)
             .help("Drag to resize focus board")
     }
 
@@ -679,6 +681,37 @@ struct MenuBarView: View {
 struct ContentView: View {
     var body: some View {
         MenuBarView()
+    }
+}
+
+private struct CursorModifier: ViewModifier {
+    let cursor: NSCursor
+
+    @State private var isCursorActive = false
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { isHovering in
+                if isHovering {
+                    cursor.push()
+                    isCursorActive = true
+                } else if isCursorActive {
+                    NSCursor.pop()
+                    isCursorActive = false
+                }
+            }
+            .onDisappear {
+                if isCursorActive {
+                    NSCursor.pop()
+                    isCursorActive = false
+                }
+            }
+    }
+}
+
+private extension View {
+    func cursor(_ cursor: NSCursor) -> some View {
+        modifier(CursorModifier(cursor: cursor))
     }
 }
 

@@ -2,11 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VERSION="${VERSION:-1.1.0}"
+BUILD_NUMBER="${BUILD_NUMBER:-2}"
 DERIVED_DATA_DIR="$ROOT_DIR/build/DerivedData"
 DMG_ROOT="$ROOT_DIR/build/dmgroot"
 DIST_DIR="$ROOT_DIR/dist"
 APP_PATH="$DERIVED_DATA_DIR/Build/Products/Release/SprintFocusTimer.app"
-DMG_PATH="$DIST_DIR/SprintFocusTimer.dmg"
+DMG_PATH="$DIST_DIR/SprintFocusTimer-$VERSION.dmg"
 
 cd "$ROOT_DIR"
 
@@ -17,6 +19,8 @@ xcodebuild \
   -destination 'platform=macOS' \
   -derivedDataPath "$DERIVED_DATA_DIR" \
   CODE_SIGNING_ALLOWED=NO \
+  MARKETING_VERSION="$VERSION" \
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   build
 
 rm -rf "$DMG_ROOT" "$DIST_DIR"

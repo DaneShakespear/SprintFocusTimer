@@ -474,7 +474,7 @@ struct MenuBarView: View {
         case let (version?, _) where !version.isEmpty:
             return "v\(version)"
         default:
-            return "v1.0.0"
+            return "v1.1.0"
         }
     }
 

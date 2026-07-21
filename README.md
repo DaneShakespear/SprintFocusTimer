@@ -1,18 +1,18 @@
 # SprintFocusTimer
 
-A small macOS focus timer with visible progress, milestone reminders, optional always-on-top behavior, and light/dark display modes.
+A compact macOS focus timer for keeping a timed work session visible, adjustable, and hard to ignore.
 
 ![SprintFocusTimer screenshot](docs/images/screenshot.svg)
 
 ## What It Does
 
-SprintFocusTimer is built for short, visible work sessions. Pick a duration, start the timer, and keep it on screen as a visual reminder.
+SprintFocusTimer is built for visible work sessions. Pick a duration, start the timer, and keep it on screen as a reminder to stay with the current task.
 
 Features:
 
 - Preset timers: 1, 5, 10, 15, 30, 60, and 90 minutes
 - Resizable circular countdown timer
-- Slide-out rich text focus board for saved working reminders
+- Slide-out rich text focus board for saved working reminders, with a resizable drawer
 - Optional milestone markers at quarter intervals
 - Optional milestone tick sounds with quick volume preview
 - Optional completion alarm
@@ -24,15 +24,15 @@ Features:
 
 ## Download
 
-Packaged downloads belong on the GitHub Releases page:
+Download the latest DMG from the GitHub Releases page:
 
 https://github.com/DaneShakespear/SprintFocusTimer/releases
 
-Download `SprintFocusTimer.dmg`, open it, then drag `SprintFocusTimer.app` into Applications.
+Open the DMG, then drag `SprintFocusTimer.app` into Applications.
 
 ## Opening The App On macOS
 
-SprintFocusTimer is currently unsigned and unnotarized. macOS may block it the first time you open it.
+SprintFocusTimer is currently unsigned and unnotarized. macOS may block it the first time you open it. The source code is public in this repository so you can inspect how the app is made or build it yourself.
 
 To open it:
 
@@ -47,8 +47,6 @@ If macOS still blocks it:
 2. Go to Privacy & Security.
 3. Look for the message about SprintFocusTimer being blocked.
 4. Click `Open Anyway`.
-
-The source code is public so you can inspect how the app is made or build it yourself.
 
 ## Build From Source
 
@@ -86,7 +84,7 @@ The repo includes a helper script:
 It builds a Release app and creates:
 
 ```text
-dist/SprintFocusTimer.dmg
+dist/SprintFocusTimer-1.1.0.dmg
 ```
 
 The DMG includes:

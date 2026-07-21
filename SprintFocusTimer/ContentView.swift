@@ -407,10 +407,17 @@ struct MenuBarView: View {
                         .stroke(background.foreground.opacity(0.16), lineWidth: 1)
                 }
 
-            Text(appVersionText)
-                .font(.caption2)
-                .foregroundStyle(background.secondaryForeground)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            HStack {
+                Link("Identity Architect", destination: identityArchitectURL)
+                    .font(.caption2)
+                    .foregroundStyle(Color.accentColor)
+
+                Spacer()
+
+                Text(appVersionText)
+                    .font(.caption2)
+                    .foregroundStyle(background.secondaryForeground)
+            }
         }
         .foregroundStyle(background.foreground)
         .padding(12)
@@ -467,6 +474,10 @@ struct MenuBarView: View {
         default:
             return "v1.0.0"
         }
+    }
+
+    var identityArchitectURL: URL {
+        URL(string: "https://daneshakespear.com?utm_source=app_SprintFocusTimer&utm_medium=in_app&utm_campaign=app_referral")!
     }
 
     func attentionGlow() -> some View {
